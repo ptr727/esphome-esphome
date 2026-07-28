@@ -51,7 +51,10 @@ bool BLEClient::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t es
   for (auto *node : this->nodes_)
     node->gattc_event_handler(event, esp_gattc_if, param);
 
-  if (!this->services_.empty() && this->all_nodes_established_()) {
+  // Holding the release until every notify registration has completed keeps the GATT cache alive
+  // for the CCCD lookup in BLEClientBase's ESP_GATTC_REG_FOR_NOTIFY_EVT handler. The last such
+  // event clears the counter before the nodes are dispatched, so the release still happens here.
+  if (!this->services_.empty() && !this->notify_registration_pending() && this->all_nodes_established_()) {
     this->release_services();
     ESP_LOGD(TAG, "All clients established, services released");
   }

@@ -125,6 +125,10 @@ void BLEClientBase::connect() {
   }
   ESP_LOGI(TAG, "[%d] [%s] 0x%02x Connecting", this->connection_index_, this->address_str_, this->remote_addr_type_);
   this->paired_ = false;
+  // Start the new connection with a live cache and no carried-over registrations. A request whose
+  // ESP_GATTC_REG_FOR_NOTIFY_EVT never arrived would otherwise block the release forever.
+  this->services_released_ = false;
+  this->pending_notify_regs_ = 0;
   // Enable loop for state processing
   this->enable_loop();
   // Immediately transition to CONNECTING to prevent duplicate connection attempts
@@ -194,6 +198,7 @@ void BLEClientBase::unconditional_disconnect() {
 }
 
 void BLEClientBase::release_services() {
+  this->services_released_ = true;
 #ifdef USE_ESP32_BLE_DEVICE
   for (auto &svc : this->services_)
     delete svc;  // NOLINT(cppcoreguidelines-owning-memory)
@@ -202,6 +207,14 @@ void BLEClientBase::release_services() {
 #ifndef CONFIG_BT_GATTC_CACHE_NVS_FLASH
   esp_ble_gattc_cache_clean(this->remote_bda_);
 #endif
+}
+
+esp_err_t BLEClientBase::register_for_notify(uint16_t char_handle) {
+  esp_err_t err = esp_ble_gattc_register_for_notify(this->gattc_if_, this->remote_bda_, char_handle);
+  if (err == ESP_OK) {
+    this->pending_notify_regs_++;
+  }
+  return err;
 }
 
 void BLEClientBase::log_event_(const char *name) {
@@ -498,10 +511,22 @@ bool BLEClientBase::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
     }
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
       this->log_gattc_data_event_("REG_FOR_NOTIFY");
+      // The event carries no conn_id, so this is the only place the request can be retired.
+      if (this->pending_notify_regs_ > 0)
+        this->pending_notify_regs_--;
       if (this->connection_type_ == espbt::ConnectionType::V3_WITH_CACHE ||
           this->connection_type_ == espbt::ConnectionType::V3_WITHOUT_CACHE) {
         // Client is responsible for flipping the descriptor value
         // when using the cache
+        break;
+      }
+      if (this->services_released_) {
+        // esp_ble_gattc_get_descr_by_char_handle() walks the GATT cache that release_services()
+        // just freed. Bluedroid asserts on the freed list rather than returning an error, so the
+        // lookup would panic the device. A node that registered for notifications and then
+        // reported ESTABLISHED before this event arrived gets here.
+        ESP_LOGW(TAG, "[%d] [%s] REG_FOR_NOTIFY after services released, notifications not enabled",
+                 this->connection_index_, this->address_str_);
         break;
       }
       esp_gattc_descr_elem_t desc_result;
