@@ -211,9 +211,15 @@ void BLEClientBase::release_services() {
 
 esp_err_t BLEClientBase::register_for_notify(uint16_t char_handle) {
   esp_err_t err = esp_ble_gattc_register_for_notify(this->gattc_if_, this->remote_bda_, char_handle);
-  if (err == ESP_OK) {
-    this->pending_notify_regs_++;
+  if (err != ESP_OK)
+    return err;
+  if (this->pending_notify_regs_ == UINT8_MAX) {
+    // Saturating undercounts, so the release can run before the last registration completes.
+    // Wrapping to zero would undercount by the full range instead, which is worse.
+    this->log_warning_("Too many outstanding notify registrations to track");
+    return err;
   }
+  this->pending_notify_regs_++;
   return err;
 }
 
