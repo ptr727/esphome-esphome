@@ -125,8 +125,7 @@ void BLEClientBase::connect() {
   }
   ESP_LOGI(TAG, "[%d] [%s] 0x%02x Connecting", this->connection_index_, this->address_str_, this->remote_addr_type_);
   this->paired_ = false;
-  // Start the new connection with a live cache and no carried-over registrations. A request whose
-  // ESP_GATTC_REG_FOR_NOTIFY_EVT never arrived would otherwise block the release forever.
+  // A registration whose event never arrived must not block this connection's release.
   this->services_released_ = false;
   this->pending_notify_regs_ = 0;
   // Enable loop for state processing
@@ -521,10 +520,7 @@ bool BLEClientBase::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         break;
       }
       if (this->services_released_) {
-        // esp_ble_gattc_get_descr_by_char_handle() walks the GATT cache that release_services()
-        // just freed. Bluedroid asserts on the freed list rather than returning an error, so the
-        // lookup would panic the device. A node that registered for notifications and then
-        // reported ESTABLISHED before this event arrived gets here.
+        // The lookup below walks the freed GATT cache, and Bluedroid asserts on it rather than erroring.
         ESP_LOGW(TAG, "[%d] [%s] REG_FOR_NOTIFY after services released, notifications not enabled",
                  this->connection_index_, this->address_str_);
         break;

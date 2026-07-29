@@ -44,13 +44,10 @@ class BLEClientBase : public espbt::ESPBTClient, public Component {
   void unconditional_disconnect();
   void release_services();
 
-  /// Register for notifications on a characteristic handle.
-  /// Wraps esp_ble_gattc_register_for_notify() and tracks the request until its
-  /// ESP_GATTC_REG_FOR_NOTIFY_EVT arrives, so the cached services are not released
-  /// while the stack still needs them to resolve the CCCD.
+  /// Register for notifications, holding the service release until the registration completes.
   esp_err_t register_for_notify(uint16_t char_handle);
 
-  /// True while at least one register_for_notify() request has not completed.
+  /// True while a register_for_notify() request has not completed.
   bool notify_registration_pending() const { return this->pending_notify_regs_ > 0; }
 
   bool connected() { return this->state() == espbt::ClientState::ESTABLISHED; }
@@ -134,12 +131,11 @@ class BLEClientBase : public espbt::ESPBTClient, public Component {
   espbt::ConnectionType connection_type_{espbt::ConnectionType::V1};
   uint8_t connection_index_;
   uint8_t service_count_{0};  // ESP32 has max handles < 255, typical devices have < 50 services
-  // Outstanding esp_ble_gattc_register_for_notify() requests, one per node per characteristic
+  // Outstanding register_for_notify() requests
   uint8_t pending_notify_regs_{0};
   bool auto_connect_{false};
   bool paired_{false};
-  // Set by release_services(), cleared by connect(). The GATT cache is gone while this is set,
-  // so any API that walks it must not be called.
+  // The GATT cache is freed while this is set, so no API that walks it may be called
   bool services_released_{false};
   // 8 bytes used, no padding
 
