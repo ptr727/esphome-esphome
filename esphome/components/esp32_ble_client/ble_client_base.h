@@ -135,7 +135,7 @@ class BLEClientBase : public espbt::ESPBTClient, public Component {
   uint8_t pending_notify_regs_{0};
   bool auto_connect_{false};
   bool paired_{false};
-  // The GATT cache is freed while this is set, so no API that walks it may be called
+  // Set only when release_services() cleans the stack's GATT cache, which no API may then walk
   bool services_released_{false};
   // 8 bytes used, no padding
 

@@ -197,13 +197,14 @@ void BLEClientBase::unconditional_disconnect() {
 }
 
 void BLEClientBase::release_services() {
-  this->services_released_ = true;
 #ifdef USE_ESP32_BLE_DEVICE
   for (auto &svc : this->services_)
     delete svc;  // NOLINT(cppcoreguidelines-owning-memory)
   this->services_.clear();
 #endif
 #ifndef CONFIG_BT_GATTC_CACHE_NVS_FLASH
+  // Only the cache clean makes the stack's database unsafe to walk.
+  this->services_released_ = true;
   esp_ble_gattc_cache_clean(this->remote_bda_);
 #endif
 }
