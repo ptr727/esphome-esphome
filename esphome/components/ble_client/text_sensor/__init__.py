@@ -30,6 +30,18 @@ BLETextSensorNotifyTrigger = ble_client_ns.class_(
     "BLETextSensorNotifyTrigger", automation.Trigger.template(cg.std_string)
 )
 
+
+def check_descriptor_notify(value):
+    if value.get(CONF_DESCRIPTOR_UUID) and value.get(CONF_NOTIFY):
+        raise cv.Invalid(
+            f"'{CONF_DESCRIPTOR_UUID}' cannot be combined with '{CONF_NOTIFY}: true'. "
+            "Notifications carry the characteristic value, not a descriptor value, so this "
+            f"text sensor would never publish. Remove '{CONF_DESCRIPTOR_UUID}' to receive "
+            f"notifications, or set '{CONF_NOTIFY}: false' to read the descriptor."
+        )
+    return value
+
+
 CONFIG_SCHEMA = cv.All(
     text_sensor.text_sensor_schema(BLETextSensor)
     .extend(
@@ -48,7 +60,8 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.polling_component_schema("60s"))
-    .extend(ble_client.BLE_CLIENT_SCHEMA)
+    .extend(ble_client.BLE_CLIENT_SCHEMA),
+    check_descriptor_notify,
 )
 
 

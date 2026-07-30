@@ -47,6 +47,17 @@ def checkType(value):
     return value
 
 
+def check_descriptor_notify(value):
+    if value.get(CONF_DESCRIPTOR_UUID) and value.get(CONF_NOTIFY):
+        raise cv.Invalid(
+            f"'{CONF_DESCRIPTOR_UUID}' cannot be combined with '{CONF_NOTIFY}: true'. "
+            "Notifications carry the characteristic value, not a descriptor value, so this "
+            f"sensor would never publish. Remove '{CONF_DESCRIPTOR_UUID}' to receive "
+            f"notifications, or set '{CONF_NOTIFY}: false' to read the descriptor."
+        )
+    return value
+
+
 CONFIG_SCHEMA = cv.All(
     checkType,
     cv.typed_schema(
@@ -85,6 +96,7 @@ CONFIG_SCHEMA = cv.All(
         },
         lower=True,
     ),
+    check_descriptor_notify,
 )
 
 
