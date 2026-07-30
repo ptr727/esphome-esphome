@@ -72,9 +72,10 @@ def test_sensor_descriptor_with_explicit_notify_false_accepted() -> None:
     assert config["descriptor_uuid"].lower() == DESCRIPTOR_UUID
 
 
-def test_sensor_with_neither_accepted() -> None:
-    """A plain characteristic sensor sets neither key."""
+def test_sensor_with_neither_key_given_accepted() -> None:
+    """A plain characteristic sensor gives neither key, and defaults notify to false."""
     config = _sensor("plain")
+    assert "descriptor_uuid" not in config
     assert config["notify"] is False
 
 
