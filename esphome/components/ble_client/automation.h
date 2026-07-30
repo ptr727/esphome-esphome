@@ -27,7 +27,7 @@ class Automation {
 // reports it keeps that memory allocated for the life of the connection.
 class BLEClientServicelessNode : public BLEClientNode {
  public:
-  // Final so that a derived node cannot report Established only some of the time.
+  // Final so that Established is always reported on SEARCH_CMPL, before the derived node sees the event.
   void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) final {
     if (event == ESP_GATTC_SEARCH_CMPL_EVT)
       this->node_state = espbt::ClientState::ESTABLISHED;
