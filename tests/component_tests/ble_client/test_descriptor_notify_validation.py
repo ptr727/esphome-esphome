@@ -52,7 +52,7 @@ def _text_sensor(name: str, **kwargs: Any) -> dict:
 def test_sensor_descriptor_without_notify_accepted() -> None:
     """Reading a descriptor is what descriptor_uuid is for.
 
-    The schema normalizes a UUID to upper case, hence the fold on both sides.
+    The schema normalizes a UUID to upper case, hence folding the validated value.
     """
     config = _sensor("descriptor read", descriptor_uuid=DESCRIPTOR_UUID)
     assert config["descriptor_uuid"].lower() == DESCRIPTOR_UUID
